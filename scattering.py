@@ -38,8 +38,7 @@ def calculate_scattering(trajs, traj_count, qAng, FLAGelec):
                     Imol = Imol + (2 * FF[i, j, :] * sinQ) # molecular scattering (i != j) - incoherent summation of amplitudes
 
             if FLAGelec:
-                pass
-                raise Exception("Electron not finished")
+                Wiam[traj, :] = (qAng * Imol)/Iat
             else:
                 Wiam[traj, :] = Imol + Iat # total scattering for each traj is the sum of molecular and atomic terms
 
@@ -55,10 +54,15 @@ def calc_traj_time(run_times, Ntraj):
     return traj_count
 
 
-def percentage_diff_signal(Wiam, exfrac, ref_signal, Nts, Nq):
+def percentage_diff_signal(Wiam, exfrac, ref_signal, Nts, Nq, FLAGelec):
     pdw = np.zeros((Nq, Nts))
-    for ts in range(Nts):
-        pdw[:, ts] = 100 * exfrac * ((Wiam[:, ts] - ref_signal) / ref_signal)
+    if FLAGelec:
+       for ts in range(Nts):
+           pdw[:, ts] = 100 * exfrac * (Wiam[:, ts] - ref_signal)
+    else:
+        for ts in range(Nts):
+            pdw[:, ts] = 100 * exfrac * ((Wiam[:, ts] - ref_signal) / ref_signal)
+
     return pdw
 
 
@@ -75,14 +79,14 @@ if __name__ == "__main__":
     ### INPUT PARAMS  ###
     parent_dir = '/Users/kyleacheson/PycharmProjects/SHARC_NMA/' # parent dir of every traj
     trajs_dirs = ['Singlet_1', 'Singlet_2'] # each subdir that contains TRAJ_XXXXX subdirs
-    FLAGelec = False # True = electron scattering (to be finished)
+    FLAGelec = True # True = electron scattering (to be finished)
     FLAGsave = False # save percentage difference, qvec and time to file
     atmnum = [6, 16, 16] # atomic numbers - must be same ordering as trajs
     natom = 3 # number atoms
     dt = 0.5 # time step in traj simulations
     exfrac = 0.03 # excitation fraction (1 = 100 %)
-    Nq = 500 # number of points in q space
-    qmax = 12 # max q value (in inv angstrom)
+    Nq = 481 # number of points in q space
+    qmax = 24 # max q value (in inv angstrom)
 
     # if you wish to set up qvec based on angles using the setup_qvec function, uncomment below
     #kin = 12 * au2ang # incident beam energy
@@ -101,10 +105,10 @@ if __name__ == "__main__":
 
     Wiam = calculate_scattering(trajs, traj_count, qAng, FLAGelec)
     ref_signal = Wiam[:, 0]
-    pdw = percentage_diff_signal(Wiam, exfrac, ref_signal, Nts, Nq)
+    pdw = percentage_diff_signal(Wiam, exfrac, ref_signal, Nts, Nq, FLAGelec)
 
     time = np.linspace(0, (Nts-1)*dt, Nts)
-    plot_signal(pdw, qAng, time)
+    #plot_signal(pdw, qAng, time)
 
     if FLAGsave:
         pass # add some functionality to save to mat, npy or text files for experimentalists

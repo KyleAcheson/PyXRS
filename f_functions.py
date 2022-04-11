@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def form_factors_xrs(atmnum, qAng):
+def form_factors(atmnum, qAng, FLAGelec):
 
     DEBUG = False
 
@@ -16,8 +16,21 @@ def form_factors_xrs(atmnum, qAng):
 
              }
 
-    fq = np.zeros((Nat, Nq))
+    if FLAGelec:
+        fq = els(atoms, atmnum, qAng)
+    else:
+        fq = xrs(atoms, atmnum, qAng)
 
+    if DEBUG:
+        plot_form_factor(qAng, fq)
+
+    return fq
+
+
+def xrs(atoms, atmnum, qAng):
+    Nat = len(atmnum)
+    Nq = len(qAng)
+    fq = np.zeros((Nat, Nq))
     for i, num in enumerate(atmnum):
         try:
             tmp = np.zeros(Nq)
@@ -27,16 +40,24 @@ def form_factors_xrs(atmnum, qAng):
 
         except KeyError:
             raise Exception('Atomic Number %s not parameterised - edit atoms dict using ITC data' % num)
-
-    if DEBUG:
-        plot_form_factor(qAng, fq)
-
     return fq
 
 
+def els(atoms, atmnum, qAng):
+    Nat = len(atmnum)
+    Nq = len(qAng)
+    fq = np.zeros((Nat, Nq))
+    for i, num in enumerate(atmnum):
+        try:
+            tmp = np.zeros(Nq)
+            for j in range(4):
+                tmp = tmp + atoms[num]['a'][j] * np.exp(-atoms[num]['b'][j] * (qAng / (4 * np.pi)) ** 2)
+            fq[i, :] = (num - (atoms[num]['c'] + tmp))/qAng**2
 
-def form_factors_elec(atmnum, qAng):
-    pass
+        except KeyError:
+            raise Exception('Atomic Number %s not parameterised - edit atoms dict using ITC data' % num)
+    return fq
+
 
 
 def scattering_factors(qAng, atmnum, FLAGelec):
@@ -44,11 +65,7 @@ def scattering_factors(qAng, atmnum, FLAGelec):
     Nat = len(atmnum)
     Nq = len(qAng)
 
-    if FLAGelec:
-        #fq = form_factors_elec(atmnum, qAng) # to be parameterised in a function using Mott-Bethe
-        raise Exception("Electron Scattering Not Possible")
-    else:
-        fq = form_factors_xrs(atmnum, qAng) # get form factors
+    fq = form_factors(atmnum, qAng, FLAGelec) # get form factors
 
     FF = np.zeros((Nat, Nat, Nq)) # calculate form factor product
     for i in range(Nat):
